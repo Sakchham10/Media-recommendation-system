@@ -80,7 +80,6 @@ def send_email(user_info_table,media_table):
         message["From"] = sender_email
         receiver_email = user_info_table[user]
         message["To"] = receiver_email[0]
-        print("media_table: ",media_table, "user: ", user)
         user_rec = media_table[user]
         final_message = " "
         for media in user_rec.keys():
@@ -94,15 +93,11 @@ def send_email(user_info_table,media_table):
             server.login(sender_email,password)
             server.sendmail(sender_email,receiver_email,message.as_string())
 
-
 def generate_rec(sheet,media_type):
     media_sheet = access_sheets("Media Club",sheet)
     media_table = table_generator(media_sheet)
     media = media_generator(media_table,media_type)
     return media
-
-
-# {Nikhil: {Books: Illiad, Games: Metro}} 
 
 def unify_rec(*args):
     media={}
@@ -114,11 +109,15 @@ def unify_rec(*args):
         for user in users:
             media[user][media_type] = arg[user]
     return media
-    
-books = generate_rec(BOOK_SHEET,"Books")
-games = generate_rec(GAME_SHEET,"Games")
-media = unify_rec(books,games) 
-user_sheet = access_sheets("Media Club",2)
-user_table = table_generator(user_sheet)
-emails= email_generator(user_table)
-send_email(emails,media)
+
+def main():
+    books = generate_rec(BOOK_SHEET,"Books")
+    games = generate_rec(GAME_SHEET,"Games")
+    media = unify_rec(books,games) 
+    user_sheet = access_sheets("Media Club",2)
+    user_table = table_generator(user_sheet)
+    emails= email_generator(user_table)
+    send_email(emails,media)
+
+if __name__ == "__main__":
+    main()
