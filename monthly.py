@@ -5,6 +5,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from time import strftime
 
+BOOK_SHEET = 0
+GAME_SHEET = 1
+
 def access_sheets(name,sheet_num):
     """
     Take in  name and sheet_num and return a editable data sheet
@@ -34,15 +37,15 @@ def email_generator(table):
     {User:Email}
     Note: Used only for user info sheet
     """
-    info_table= {}
+    user_info_table= {}
     key_list = table['User']
     flag = 1
     for key in key_list:
-        info_table[key] = table['Email'][flag-1:flag]
+        user_info_table[key] = table['Email'][flag-1:flag]
         flag+=1
-    return info_table
+    return user_info_table
 
-def media_generator(actual_table):
+def media_generator(actual_table,media_type):
     """
     Take in the dict from table_generator and select random game for every user.
     Return a dict like {User: Game,...} 
@@ -55,9 +58,10 @@ def media_generator(actual_table):
         #Remove duplicates
         media_list = list(set(media_list))
         rec[key] = random.choice(media_list)
+    rec["type"] = media_type
     return rec
 
-def send_email(info_table,rec):
+def send_email(user_info_table,media_table):
     """
     Take in the dict from email_generator and media_generator.
     Send out game recommendations to each user.
@@ -69,14 +73,20 @@ def send_email(info_table,rec):
         sender_email = credentials[0]
         password = credentials[1]
     month = strftime("%B")
-    text = "Your game for {} is: ".format(month)
-    for key in info_table.keys():
+    text = "Your reccomendations for {} are: ".format(month)
+    for user in user_info_table.keys():
         message = MIMEMultipart("alternative")
-        message["Subject"] = "Game of the Month"
+        message["Subject"] = "Media of the Month"
         message["From"] = sender_email
-        receiver_email = info_table[key]
+        receiver_email = user_info_table[user]
         message["To"] = receiver_email[0]
-        final_message = text + rec[key]
+        print("media_table: ",media_table, "user: ", user)
+        user_rec = media_table[user]
+        final_message = " "
+        for media in user_rec.keys():
+            rec = user_rec[media]
+            final_message = final_message + " " + rec
+        final_message = text + final_message
         part1 = MIMEText(final_message, "plain")
         message.attach(part1)
         context = ssl.create_default_context()
@@ -84,10 +94,31 @@ def send_email(info_table,rec):
             server.login(sender_email,password)
             server.sendmail(sender_email,receiver_email,message.as_string())
 
-game_sheet = access_sheets("Media Club",1)
-game_table = table_generator(game_sheet)
-games = media_generator(game_table)
+
+def generate_rec(sheet,media_type):
+    media_sheet = access_sheets("Media Club",sheet)
+    media_table = table_generator(media_sheet)
+    media = media_generator(media_table,media_type)
+    return media
+
+
+# {Nikhil: {Books: Illiad, Games: Metro}} 
+
+def unify_rec(*args):
+    media={}
+    users = [user for user in args[0].keys() if user != "type"]
+    for user in users:
+        media[user]={}
+    for arg in args:
+        media_type = arg["type"]
+        for user in users:
+            media[user][media_type] = arg[user]
+    return media
+    
+books = generate_rec(BOOK_SHEET,"Books")
+games = generate_rec(GAME_SHEET,"Games")
+media = unify_rec(books,games) 
 user_sheet = access_sheets("Media Club",2)
 user_table = table_generator(user_sheet)
 emails= email_generator(user_table)
-send_email(emails,games)
+send_email(emails,media)
